@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+{% block css %}<link rel="stylesheet" href="{{url_for('.static', filename='css/index.css')}}">{% endblock %}
+
+{% block body %}
+<div class="username-area">
+  <label id="username-label" for="username">Username:
+    <input id="username-input">
+</div>
+
+<label title="`--verbose`: Display extra debugging information and metrics." id="verbose-label"
+  for="verbose">Verbose:</label>
+<input title="`--verbose`: Display extra debugging information and metrics." type="checkbox" id="verbose-cb">
+
+<br>
+
+<label title="`--nsfw`: Include checking of NSFW sites from default list." id="nsfw-label">NSFW:</label>
+<input title="`--nsfw`: Include checking of NSFW sites from default list." type="checkbox" id="nsfw-cb">
+
+<br>
+
+<label title="`--local`: Force the use of the local data.json file." id="local-label">local:</label>
+<input title="`--local`: Force the use of the local data.json file." type="checkbox" id="local-cb">
+
+<br>
+
+<label title="`--xlsx`: Create the standard file for the modern Microsoft Excel spreadsheet (xslx)"
+  id="xlsx-label">XLSX:</label>
+<input title="`--xlsx`: Create the standard file for the modern Microsoft Excel spreadsheet (xslx)" type="checkbox"
+  id="xlsx-cb">
+
+<br>
+
+<label title="`--csv`: Create Comma-Separated Values (CSV) File." id="csv-label">CSV:</label>
+<input title="`--csv`: Create Comma-Separated Values (CSV) File." type="checkbox" id="csv-cb">
+
+<br>
+
+
+<label title="`--timeout`: Time (in seconds) to wait for response to requests (Default: 60)"
+  id="timeout-label">Timeout:</label>
+<input title="`--timeout`: Time (in seconds) to wait for response to requests (Default: 60)" type="number" step="1"
+  id="timeout-step" value="60">
+
+<br>
+<label title="Enable/Disable console output" for="get-stdout">Get stdout:</label>
+<input title="Enable/Disable console output" type="checkbox" id="get-stdout">
+<br>
+<button type="submit" id="submit-btn">Run</button>
+
+<br>
+
+<div class="users">
+  {% for h in history %}
+  <a href="/user/{{ h.0 }}">{{ h.0 }}</a>
+  <button class="delete-user" name="{{ h.1 }}" id="whatever">X</button>
+  <br>
+  {% endfor %}
+</div>
+
+<div class="commands">
+  {% for command in commands %}
+  <small>{{ command }}</small>
+  <button class="delete-command" name="{{ command }}" id="whatever">X</button>
+  <hr>
+  {% endfor %}
+</div>
+
+<script type="text/javascript" src="{{ url_for('static', filename='js/common.js') }}"></script>
+<script type="text/javascript" src="{{ url_for('static', filename='js/index.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,9 @@
+{% extends 'base.html' %}
+
+{% block body %}
+{% for line in userdata %}
+    <a href="{{ line.0 }}">{{ line.0 }}: Status {{ line.1 }}</a>
+    <br>
+{% endfor %}
+{{ total }}
+{% endblock %}

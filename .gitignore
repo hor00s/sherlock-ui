@@ -1,0 +1,7 @@
+todo
+.venv/
+venv/
+__pycache__/
+.command_log.txt
+.logs.txt
+results/
