@@ -1,18 +1,19 @@
 import os
 import sys
 import json
+import utils
 import shutil
 import datetime
 import traceback
 import requests as req
 import threading as thr
-from mimetypes import guess_type
 import multiprocessing as mp
 from pathlib import Path
 from logger import Logger, get_color
 from typing import TypedDict
 from bs4 import BeautifulSoup
 from requests.exceptions import TooManyRedirects
+from flask_lt import run_with_lt
 from filedirutil import (
     FileHandler,
     DirHanlder,
@@ -33,17 +34,9 @@ app = Flask(__name__)
 app.secret_key = "super-sectet-key"
 
 
-BASE_DIR = Path(__file__).parent.parent
-SHERLOCK = Path(f"{BASE_DIR}/sherlock/sherlock/sherlock.py")
-RESULT_DIR = Path(f"{BASE_DIR}/results")
-COMMAND_LOG = Path(f"{BASE_DIR}/.command_log.txt")
-APP_LOGS = Path(f"{BASE_DIR}/.logs.txt")
-DESCRIPTION_THRESHOLD = slice(0, 50)
-DEFAULT_TIMEOUT = 60
-
-logger = Logger(1, APP_LOGS)
-command_handler = FileHandler(COMMAND_LOG, '\n')
-result_hander = DirHanlder(RESULT_DIR)
+logger = Logger(1, utils.APP_LOGS)
+command_handler = FileHandler(utils.COMMAND_LOG, '\n')
+result_hander = DirHanlder(utils.RESULT_DIR)
 
 class SherlockCommand(TypedDict):
     username: str
@@ -74,15 +67,16 @@ def check_for_extra_files(username: str):
     extensions = ('.xlsx', '.csv')
     
     # Move .csv files in base dir
-    csv_in_results = filter(lambda i: i.endswith('.csv'), os.listdir(RESULT_DIR))
-    full_paths = map(lambda i: str(Path(f"{RESULT_DIR}/{i}")), csv_in_results)
+    csv_in_results = filter(lambda i: i.endswith('.csv'), os.listdir(utils.RESULT_DIR))
+    full_paths = map(lambda i: str(Path(f"{utils.RESULT_DIR}/{i}")), csv_in_results)
     for path in full_paths:
         # filename = path.split(os.sep)[-1]
         filename = DirHanlder.get_filename_with_ext_from_path(path)
-        shutil.move(path, Path(f"{BASE_DIR}/{filename}"))
+        shutil.move(path, Path(f"{utils.BASE_DIR}/{filename}"))
 
-    files = map(lambda ext: str(Path(f"{BASE_DIR}/{username}{ext}")), extensions)
+    files = map(lambda ext: str(Path(f"{utils.BASE_DIR}/{username}{ext}")), extensions)
     existing = filter(lambda i: os.path.exists(i), files)
+    
     return existing
 
 
@@ -100,16 +94,16 @@ def construct_command(options: SherlockCommand) -> str:
 
     command = []
     command.append('python3')
-    command.append(SHERLOCK)
+    command.append(utils.SHERLOCK)
 
     command.append('--timeout')
     timeout_time = options_copy.pop('timeout')
     get_stdout = options_copy.pop('get_stdout')
     
     if not timeout_time:
-        command.append(DEFAULT_TIMEOUT)
+        command.append(utils.DEFAULT_TIMEOUT)
     elif not timeout_time.isnumeric():
-        command.append(DEFAULT_TIMEOUT)
+        command.append(utils.DEFAULT_TIMEOUT)
     else:
         command.append(timeout_time)
     
@@ -120,7 +114,7 @@ def construct_command(options: SherlockCommand) -> str:
             command.append(k)
     
     command.append('--folderoutput')
-    command.append(RESULT_DIR)
+    command.append(utils.RESULT_DIR)
     command.append(username)
 
     if not get_stdout:
@@ -153,7 +147,7 @@ def scrape_url(url: str) -> str:
 def _check_statuses(url: str, storage: List[Any]) -> None:
     html = scrape_url(url)
     result = parse_html(html)
-    short_description = result[DESCRIPTION_THRESHOLD]
+    short_description = result[utils.DESCRIPTION_THRESHOLD]
     storage.append([url.strip(), f"{short_description}..."])
 
 
@@ -207,6 +201,9 @@ def api() -> Dict[str, Any]:
             username = DirHanlder.get_filename_from_path(file)
             logger.success(f"User `{username}` has been removed\n")
             response = {'file': file, 'status': 'removed'}
+            # Delete the extra files related to deleted user
+            for file in check_for_extra_files(username):
+                os.remove(file)
             return response
         elif header == 'command':
             command = body['content']
@@ -233,14 +230,14 @@ def logs():
 
 @app.route('/download/<filename>')
 def download(filename):
-    path = str(Path(f"{BASE_DIR}/{filename}"))
+    path = str(Path(f"{utils.BASE_DIR}/{filename}"))
     return send_file(path, as_attachment=True)
 
 
 
 @app.route('/user/<username>')
 def get_user(username: str) -> str:
-    user_results = Path(f"{RESULT_DIR}/{username}.txt")
+    user_results = Path(f"{utils.RESULT_DIR}/{username}.txt")
     with open(user_results) as f:
         data = f.readlines()
 
@@ -264,8 +261,14 @@ def index() -> str:
     return render_template('index.html', history=result_history, commands=command_history)
 
 
+def main():
+    if len(sys.argv) > 1 and sys.argv[1] == 'lt':
+        run_with_lt(app)
+    app.run(debug=True, port=6969)
+
+
 if __name__ == '__main__':
     try:
-        app.run(debug=True, port=6969)
+        main()
     except Exception as err:
         log_error(err)

@@ -1,12 +1,14 @@
 {% extends 'base.html' %}
 
 {% block body %}
+<button id="clear-logs">Clear</button>
+<br>
+
 {% for log in logs %}
   <small>{{ log }}</small>
   <hr>
 {% endfor %}
 
-<button id="clear-logs">Clear</button>
 
 <script type="text/javascript" src="{{ url_for('static', filename='js/common.js') }}"></script>
 <script src="{{ url_for('static', filename='js/app_logs.js') }}"></script>
