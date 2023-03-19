@@ -65,18 +65,17 @@ def clear_sherlock_output() -> str:
 
 def check_for_extra_files(username: str):
     extensions = ('.xlsx', '.csv')
-    
     # Move .csv files in base dir
     csv_in_results = filter(lambda i: i.endswith('.csv'), os.listdir(utils.RESULT_DIR))
     full_paths = map(lambda i: str(Path(f"{utils.RESULT_DIR}/{i}")), csv_in_results)
-    for path in full_paths:
-        # filename = path.split(os.sep)[-1]
-        filename = DirHanlder.get_filename_with_ext_from_path(path)
-        shutil.move(path, Path(f"{utils.BASE_DIR}/{filename}"))
 
-    files = map(lambda ext: str(Path(f"{utils.BASE_DIR}/{username}{ext}")), extensions)
+    for path in full_paths:
+        filename = DirHanlder.get_filename_with_ext_from_path(path)
+        shutil.move(path, Path(f"{utils.BASE_DIR.parent}/{filename}"))
+
+    files = map(lambda ext: str(Path(f"{utils.BASE_DIR.parent}/{username}{ext}")), extensions)
     existing = filter(lambda i: os.path.exists(i), files)
-    
+
     return existing
 
 
@@ -84,6 +83,7 @@ def run_sherlock(command: str, username: str) -> None:
     logger.info(f"Initiating sherlock for `{username}`\n")
     os.system(command)
     logger.custom(result_hander.get_total_found_on(username), username, color=get_color('cyan'))
+    check_for_extra_files(username)
     # TODO: Send signal to /api when operation finishes
     ...
 
@@ -95,6 +95,7 @@ def construct_command(options: SherlockCommand) -> str:
     command = []
     command.append('python3')
     command.append(utils.SHERLOCK)
+    logger.debug(utils.SHERLOCK)
 
     command.append('--timeout')
     timeout_time = options_copy.pop('timeout')
@@ -230,9 +231,8 @@ def logs():
 
 @app.route('/download/<filename>')
 def download(filename):
-    path = str(Path(f"{utils.BASE_DIR}/{filename}"))
+    path = str(Path(f"{utils.BASE_DIR.parent}/{filename}"))
     return send_file(path, as_attachment=True)
-
 
 
 @app.route('/user/<username>')

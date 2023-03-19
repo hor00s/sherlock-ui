@@ -7,3 +7,4 @@ __pycache__/
 results/
 *.xlsx
 *.csv
+update_log.txt
