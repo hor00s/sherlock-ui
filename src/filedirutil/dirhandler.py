@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import List
+from typing import List, Union
 
 __all__ = [
     'DirHanlder',
@@ -20,6 +20,10 @@ class DirHanlder:
         r_name = ''.join(reversed(filename))
         r_name = r_name[r_name.index('.')+1:]
         return ''.join(reversed(r_name))
+    
+    @staticmethod
+    def get_filename_with_ext_from_path(path: Union[str, Path]) -> str:
+        return str(path).split(os.sep)[-1]
     
     def init(self):
         if not os.path.exists(self._dir):

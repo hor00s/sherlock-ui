@@ -1,10 +1,12 @@
 import os
 import sys
 import json
+import shutil
 import datetime
 import traceback
 import requests as req
 import threading as thr
+from mimetypes import guess_type
 import multiprocessing as mp
 from pathlib import Path
 from logger import Logger, get_color
@@ -23,6 +25,7 @@ from typing import (
 from flask import (
     Flask,
     request,
+    send_file,
     render_template,
 )
 
@@ -32,7 +35,7 @@ app.secret_key = "super-sectet-key"
 
 BASE_DIR = Path(__file__).parent.parent
 SHERLOCK = Path(f"{BASE_DIR}/sherlock/sherlock/sherlock.py")
-FOLDER_OUTPUT = Path(f"{BASE_DIR}/results")
+RESULT_DIR = Path(f"{BASE_DIR}/results")
 COMMAND_LOG = Path(f"{BASE_DIR}/.command_log.txt")
 APP_LOGS = Path(f"{BASE_DIR}/.logs.txt")
 DESCRIPTION_THRESHOLD = slice(0, 50)
@@ -40,7 +43,7 @@ DEFAULT_TIMEOUT = 60
 
 logger = Logger(1, APP_LOGS)
 command_handler = FileHandler(COMMAND_LOG, '\n')
-result_hander = DirHanlder(FOLDER_OUTPUT)
+result_hander = DirHanlder(RESULT_DIR)
 
 class SherlockCommand(TypedDict):
     username: str
@@ -65,6 +68,22 @@ def clear_sherlock_output() -> str:
         return "> /dev/null"
     elif sys.platform in ('win32',):
         return "> nul"
+
+
+def check_for_extra_files(username: str):
+    extensions = ('.xlsx', '.csv')
+    
+    # Move .csv files in base dir
+    csv_in_results = filter(lambda i: i.endswith('.csv'), os.listdir(RESULT_DIR))
+    full_paths = map(lambda i: str(Path(f"{RESULT_DIR}/{i}")), csv_in_results)
+    for path in full_paths:
+        # filename = path.split(os.sep)[-1]
+        filename = DirHanlder.get_filename_with_ext_from_path(path)
+        shutil.move(path, Path(f"{BASE_DIR}/{filename}"))
+
+    files = map(lambda ext: str(Path(f"{BASE_DIR}/{username}{ext}")), extensions)
+    existing = filter(lambda i: os.path.exists(i), files)
+    return existing
 
 
 def run_sherlock(command: str, username: str) -> None:
@@ -101,7 +120,7 @@ def construct_command(options: SherlockCommand) -> str:
             command.append(k)
     
     command.append('--folderoutput')
-    command.append(FOLDER_OUTPUT)
+    command.append(RESULT_DIR)
     command.append(username)
 
     if not get_stdout:
@@ -212,16 +231,25 @@ def logs():
     return render_template('app_logs.html', logs=data)
 
 
+@app.route('/download/<filename>')
+def download(filename):
+    path = str(Path(f"{BASE_DIR}/{filename}"))
+    return send_file(path, as_attachment=True)
+
+
+
 @app.route('/user/<username>')
 def get_user(username: str) -> str:
-    user_results = Path(f"{FOLDER_OUTPUT}/{username}.txt")
+    user_results = Path(f"{RESULT_DIR}/{username}.txt")
     with open(user_results) as f:
         data = f.readlines()
 
     sites = data[:-1]
     data_with_status = check_statuses(sites)
     total = data[-1]
-    return render_template('userinfo.html', userdata=data_with_status, total=total)
+    downloadables = map(lambda i: DirHanlder.get_filename_with_ext_from_path(i), check_for_extra_files(username))
+    
+    return render_template('userinfo.html', userdata=data_with_status, total=total, files=downloadables)
 
 
 @app.route('/')

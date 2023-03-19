@@ -6,4 +6,14 @@
     <br>
 {% endfor %}
 {{ total }}
+<br>
+
+<hr>
+
+<h4 id="donwladables">Downloadables found</h4>
+{% for file in files %}
+  <a href="/download/{{ file }}">{{ file }}</a>
+  <br>
+{% endfor %}
+
 {% endblock %}
