@@ -28,7 +28,10 @@ logger = Logger(1, str(UPDATE_LOG))
 sherlock_cloud_version_file = 'https://github.com/sherlock-project/sherlock/blob/master/sherlock/sherlock.py'
 sherlock_zip_download = 'https://github.com/sherlock-project/sherlock/archive/refs/heads/master.zip'
 sherlock_local_version_file = f'{BASE}/sherlock/sherlock/sherlock.py'
-ui_local_version_file = f'{BASE}/utils/constants.py'
+
+ui_local_version_file = f'{BASE}/src/utils/constants.py'
+ui_cloud_version_file = 'https://github.com/hor00s/sherlock-ui/blob/master/src/utils/constants.py'
+ui_zip_download = 'https://github.com/hor00s/sherlock-ui/archive/refs/heads/master.zip'
 
 abort = get_color('red_bold')
 
@@ -101,26 +104,17 @@ def delete_unwanted_files(files: list[str]):
 
 
 def update(project, local_version_file, cloud_version_file, project_download_uri):
-    exists = {
-        f'../{project}': True,
-        project: True,
-    }
+    local_version = get_local_version(local_version_file)
+    cloud_version = get_cloud_version(cloud_version_file)
 
-    if exists.get(project, False):
-        local_version = get_local_version(local_version_file)
-        cloud_version = get_cloud_version(cloud_version_file)
-
-        logger.custom(f"Cloud version `{'.'.join(map(str, cloud_version))}` | Local version `{'.'.join(map(str, local_version))}`", 'versions', color=get_color('cyan'))
-        if cloud_version > (0, 0, 0):
-            logger.info("Update is available")
-            zip_file = get_zip_file(project_download_uri)
-            unzip_file(zip_file, BASE)
-            rename_project(project)
-        else:
-            logger.info("No available update found")
+    logger.custom(f"Cloud version `{'.'.join(map(str, cloud_version))}` | Local version `{'.'.join(map(str, local_version))}`", 'versions', color=get_color('cyan'))
+    if cloud_version > local_version:
+        logger.info("Update is available")
+        zip_file = get_zip_file(project_download_uri)
+        unzip_file(zip_file, BASE)
+        rename_project(project)
     else:
-        logger.custom(f"Invalid project `{project}`", 'abort', color=abort)
-        sys.exit(1)
+        logger.info("No available update found")
 
 
 if len(sys.argv) < 2:
@@ -130,11 +124,23 @@ if len(sys.argv) < 2:
 
 def main():
     update_project = sys.argv[1]
-    logger.info(f"Initializing update for `{update_project}`: {datetime.datetime.now()}")
+    project_exists = {'sherlock': 'sherlock', 'sherlock-ui': '../sherlock-ui'}.get(update_project)
 
-    update(update_project, sherlock_local_version_file, sherlock_cloud_version_file, sherlock_zip_download)
-    delete_unwanted_files(UNWANTED_FILES)
-    logger.success('Operation completed')
+    update_data = {
+        'sherlock': (sherlock_local_version_file, sherlock_cloud_version_file, sherlock_zip_download),
+        'sherlock-ui': (ui_local_version_file, ui_cloud_version_file, ui_zip_download)
+    }
+
+    project, data = update_project, update_data[update_project]
+
+    if project_exists:
+        logger.info(f"Initializing update for `{update_project}`: {datetime.datetime.now()}")
+
+        update(project, *data)
+        delete_unwanted_files(UNWANTED_FILES)
+        logger.success('Operation completed')
+    else:
+        logger.error(f"Invalid argument for `{update_project}`")
 
 
 if __name__ == '__main__':
