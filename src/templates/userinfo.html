@@ -1,8 +1,11 @@
 {% extends 'base.html' %}
 
+<small>{{ user }}</small>
+
 {% block body %}
 {% for line in userdata %}
-    <a href="{{ line.0 }}">{{ line.0 }}: Status {{ line.1 }}</a>
+    <a id="site-found" href="{{ line.0 }}">{{ line.0 }}: Status {{ line.1 }}</a>
+    <button name="{{ line.0 }}" id="delete-site">X</button>
     <br>
 {% endfor %}
 {{ total }}
@@ -10,10 +13,18 @@
 
 <hr>
 
+<label for="add-site" id="add-site-lbl">Add a site</label>
+<input type="text" id="add-site">
+<button id="add">Add</button>
+
 <h4 id="donwladables">Downloadables found</h4>
 {% for file in files %}
   <a href="/download/{{ file }}">{{ file }}</a>
   <br>
 {% endfor %}
+
+
+<script type="text/javascript" src="{{ url_for('static', filename='js/common.js') }}"></script>
+<script type="text/javascript" src="{{ url_for('static', filename='js/user_info.js') }}"></script>
 
 {% endblock %}

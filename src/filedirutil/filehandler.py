@@ -39,14 +39,24 @@ class FileHandler:
     def all(self) -> List[str]:
         return list(filter(lambda i: i != '\n', self.read()))
 
-    def delete(self, line: str) -> str:
+    def delete(self, line_num: int) -> str:
         data = self.read()
         new_file_content = ""
 
-        deleted = data.pop(line)
+        deleted = data.pop(line_num)
 
-        for line in data:
-            new_file_content += f"{line}"
+        for line_num in data:
+            new_file_content += f"{line_num}"
 
         self.write(new_file_content)
         return deleted
+
+    def delete_line(self, line):
+        new_text = ""
+        for file_line in self.read():
+
+            if file_line.strip() == line.strip():
+                continue
+            new_text += file_line
+
+        self.write(new_text)

@@ -68,7 +68,6 @@ submitBtn.addEventListener('click', () => {
 
 
 deleteUserBtn.forEach((item, _) => {
-    console.log(item.name === item.id)
     item.addEventListener('click', () => {
         
         sendRequest('DELETE', 'user', {'file': item.name}, '/api')
@@ -79,7 +78,6 @@ deleteUserBtn.forEach((item, _) => {
 
 deleteCommandBtn.forEach((item, index) => {
     item.addEventListener('click', () => {
-        console.log(index)
         sendRequest('DELETE', 'command', {'content': index}, '/api')
         window.location.reload()
     })

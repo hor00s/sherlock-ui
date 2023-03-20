@@ -57,7 +57,7 @@ def get_local_version(file: str) -> tuple[int]:
 def get_cloud_version(cloud_file: str) -> tuple[int]:
     # Parse whole html
     # Find version
-    # Get next 2 index (version, =, <version>)
+    # Get next 2 index ('__version__', '=', '<version>')
     soup = BeautifulSoup(req.get(cloud_file).text, 'html.parser')
     parsed_html = tuple(parser(soup.text))
     for index, word in enumerate(parsed_html):

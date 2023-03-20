@@ -7,6 +7,7 @@ import datetime
 import traceback
 import requests as req
 import threading as thr
+import subprocess as sb
 import multiprocessing as mp
 from pathlib import Path
 from logger import Logger, get_color
@@ -71,12 +72,16 @@ def check_for_extra_files(username: str):
 
     for path in full_paths:
         filename = DirHanlder.get_filename_with_ext_from_path(path)
-        shutil.move(path, Path(f"{utils.BASE_DIR.parent}/{filename}"))
+        shutil.move(path, Path(f"{utils.BASE_DIR}/{filename}"))
 
-    files = map(lambda ext: str(Path(f"{utils.BASE_DIR.parent}/{username}{ext}")), extensions)
+    files = map(lambda ext: str(Path(f"{utils.BASE_DIR}/{username}{ext}")), extensions)
     existing = filter(lambda i: os.path.exists(i), files)
 
     return existing
+
+
+def get_sherlock_version():
+    return sb.check_output(['python3', f'{utils.SHERLOCK}', '--version']).decode('utf-8').split('\n')[:-1]
 
 
 def run_sherlock(command: str, username: str) -> None:
@@ -95,7 +100,6 @@ def construct_command(options: SherlockCommand) -> str:
     command = []
     command.append('python3')
     command.append(utils.SHERLOCK)
-    logger.debug(utils.SHERLOCK)
 
     command.append('--timeout')
     timeout_time = options_copy.pop('timeout')
@@ -169,7 +173,7 @@ def check_statuses(urls: List[str]) -> List[str]:
     return data_with_status
 
 
-@app.route('/api', methods=['POST', 'GET', 'DELETE'])
+@app.route('/api', methods=['POST', 'GET', 'DELETE', 'PUT'])
 def api() -> Dict[str, Any]:
     data = json.loads(request.get_data())
     header = data['header']
@@ -208,7 +212,6 @@ def api() -> Dict[str, Any]:
             return response
         elif header == 'command':
             command = body['content']
-            print(command)
             deleted = command_handler.delete(command)
             logger.success(f"Command `{deleted}` has been removed\n")
             response = {'user': '<username>', 'status': 'removed'}
@@ -217,6 +220,22 @@ def api() -> Dict[str, Any]:
             with open(logger.log_path, mode='w') as f:
                 f.write('')
             return {'logs': 'cleared'}
+        elif header == 'site':
+            site, user = body['site'], body['user']
+            handler = FileHandler(Path(f"{utils.RESULT_DIR}/{user}.txt"))
+            handler.delete_line(site)
+            return {'site': site, 'status': 'deleted'}
+    elif request.method == 'PUT':
+        if header == 'site':
+            user, site = body['user'], body['site'] + '\n'
+            handler = FileHandler(Path(f"{utils.RESULT_DIR}/{user}.txt"))
+            if site not in handler.read():
+                total = handler.delete(-1)
+                handler.append(site)
+                handler.append(total)
+            e = list(check_for_extra_files(user))
+            print(e)
+            # TODO: Save the extra site in the `extra_files` (.csv, .xlsx)
 
     return {'status': 'ok'}
 
@@ -231,7 +250,7 @@ def logs():
 
 @app.route('/download/<filename>')
 def download(filename):
-    path = str(Path(f"{utils.BASE_DIR.parent}/{filename}"))
+    path = str(Path(f"{utils.BASE_DIR}/{filename}"))
     return send_file(path, as_attachment=True)
 
 
@@ -246,7 +265,7 @@ def get_user(username: str) -> str:
     total = data[-1]
     downloadables = map(lambda i: DirHanlder.get_filename_with_ext_from_path(i), check_for_extra_files(username))
     
-    return render_template('userinfo.html', userdata=data_with_status, total=total, files=downloadables)
+    return render_template('userinfo.html', userdata=data_with_status, total=total, files=downloadables, user=username)
 
 
 @app.route('/')
@@ -255,10 +274,11 @@ def index() -> str:
     command_handler.init()
     result_history = result_hander.all()
     command_history = command_handler.all()
+    version_info = get_sherlock_version()
 
     result_history.reverse()
     # command_history.reverse()
-    return render_template('index.html', history=result_history, commands=command_history)
+    return render_template('index.html', history=result_history, commands=command_history, version_info=version_info)
 
 
 def main():
