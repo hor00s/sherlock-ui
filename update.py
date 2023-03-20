@@ -8,7 +8,7 @@ from bs4 import BeautifulSoup
 from pathlib import Path
 
 
-# base = BASE_DIR.parent
+
 BASE = Path(__file__).parent
 UPDATE_LOG = Path(f"{BASE}/update_log.txt")
 SHERLOCK = Path(f"{BASE}/sherlock")
@@ -68,10 +68,10 @@ def get_cloud_version(cloud_file: str) -> tuple[int]:
     return soup.text
 
 
-def get_zip_file(url: str) -> str:
+def get_zip_file(url: str, land_dir: str) -> str:
     logger.info("Searching for project files")
     byte_stream = req.get(url).content
-    file_name = url.split('/')[-1]
+    file_name = Path(f"{land_dir}/{url.split('/')[-1]}")
     with open(file_name, mode='wb') as f:
         f.write(byte_stream)
     logger.success("Project is downloaded")
@@ -79,6 +79,7 @@ def get_zip_file(url: str) -> str:
 
 
 def unzip_file(filename: str, extract_to):
+    print(filename, extract_to)
     logger.info(f"Unziping `{filename}`")
     shutil.unpack_archive(filename, extract_to)
     logger.success(f"`{filename}` has been uncompressed")
@@ -86,11 +87,12 @@ def unzip_file(filename: str, extract_to):
     logger.info("Deleting compressed directory")
 
 
-def rename_project(project: str):
-    path = Path(f"{project}-master")
-    shutil.rmtree(project)
-    logger.info(f"Renaming {path} -> {project}")
-    os.rename(path, project)
+def rename_project(land_dir, project: str):
+    path = Path(f"{land_dir}/{project}-master")
+    full_project = Path(f"{land_dir}/{project}")
+    shutil.rmtree(full_project)
+    os.rename(path, full_project)
+    logger.info(f"Renaming {path} -> {full_project}")
 
 
 def delete_unwanted_files(files: list[str]):
@@ -103,16 +105,16 @@ def delete_unwanted_files(files: list[str]):
     logger.success("Files removed")
 
 
-def update(project, local_version_file, cloud_version_file, project_download_uri):
+def update(project, local_version_file, cloud_version_file, project_download_uri, land_dir):
     local_version = get_local_version(local_version_file)
     cloud_version = get_cloud_version(cloud_version_file)
 
     logger.custom(f"Cloud version `{'.'.join(map(str, cloud_version))}` | Local version `{'.'.join(map(str, local_version))}`", 'versions', color=get_color('cyan'))
     if cloud_version > local_version:
         logger.info("Update is available")
-        zip_file = get_zip_file(project_download_uri)
-        unzip_file(zip_file, BASE)
-        rename_project(project)
+        zip_file = get_zip_file(project_download_uri, land_dir)
+        unzip_file(zip_file, land_dir)
+        rename_project(land_dir, project)
     else:
         logger.info("No available update found")
 
@@ -124,24 +126,21 @@ if len(sys.argv) < 2:
 
 def main():
     update_project = sys.argv[1]
-    project_exists = {'sherlock': 'sherlock', 'sherlock-ui': '../sherlock-ui'}.get(update_project)
 
     update_data = {
-        'sherlock': (sherlock_local_version_file, sherlock_cloud_version_file, sherlock_zip_download),
-        'sherlock-ui': (ui_local_version_file, ui_cloud_version_file, ui_zip_download)
+        'sherlock': (sherlock_local_version_file, sherlock_cloud_version_file, sherlock_zip_download, BASE),
+        'sherlock-ui': (ui_local_version_file, ui_cloud_version_file, ui_zip_download, BASE.parent)
     }
 
     project, data = update_project, update_data[update_project]
 
-    if project_exists:
-        logger.info(f"Initializing update for `{update_project}`: {datetime.datetime.now()}")
+    logger.info(f"Initializing update for `{update_project}`: {datetime.datetime.now()}")
 
-        update(project, *data)
-        delete_unwanted_files(UNWANTED_FILES)
-        logger.success('Operation completed')
-    else:
-        logger.error(f"Invalid argument for `{update_project}`")
+    update(project, *data)
+    delete_unwanted_files(UNWANTED_FILES)
+    logger.success('Operation completed')
 
 
 if __name__ == '__main__':
     main()
+
