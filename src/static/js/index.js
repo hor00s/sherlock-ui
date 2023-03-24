@@ -27,9 +27,11 @@ const stdOutCb = document.getElementById('get-stdout')
 const localCb = document.getElementById('local-cb')
 
 
+const clearCommandsBtn = document.getElementById('clear-commands')
 const submitBtn = document.getElementById('submit-btn')
 const deleteUserBtn = document.querySelectorAll('.delete-user')
 const deleteCommandBtn = document.querySelectorAll('.delete-command')
+const clearUsersBtn = document.getElementById('clear-users')
 
 submitBtn.addEventListener('click', () => {
     let command = {}
@@ -81,4 +83,15 @@ deleteCommandBtn.forEach((item, index) => {
         sendRequest('DELETE', 'command', {'content': index}, '/api')
         window.location.reload()
     })
+})
+
+
+clearCommandsBtn.addEventListener('click', () => {
+    sendRequest('DELETE', 'all_commands', {}, '/api')
+    window.location.reload()
+})
+
+
+clearUsersBtn.addEventListener('click', ()  => {
+    sendRequest('DELETE', 'all_users', {}, '/api')
 })

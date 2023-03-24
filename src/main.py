@@ -86,12 +86,29 @@ def api() -> Dict[str, Any]:
             for file in utils.check_for_extra_files(username):
                 os.remove(file)
             return response
+        elif header == 'all_users':
+            user_files = os.listdir(utils.RESULT_DIR)
+            all_users = map(lambda user: Path(f"{utils.RESULT_DIR}/{user}"), user_files)
+            # Delete extra files
+            for file in user_files:
+                files_found = utils.check_for_extra_files(DirHanlder.remove_ext(file))
+                for user_file in files_found:
+                    os.remove(user_file)
+            # Delete users
+            for user in all_users:
+                os.remove(user)
+            logger.success("User history has been cleared")
+            response = {'all_users': 'cleared'}
         elif header == 'command':
             command = body['content']
             deleted = command_handler.delete_line(command)
             logger.success(f"Command `{deleted}` has been removed\n")
             response = {'user': '<username>', 'status': 'removed'}
             return response
+        elif header == 'all_commands':
+            command_handler.write("")
+            logger.success("All commands have been cleared")
+            response = {'all_commands': 'cleared'}
         elif header == 'logs':
             with open(logger.log_path, mode='w') as f:
                 f.write('')
@@ -120,7 +137,7 @@ def api() -> Dict[str, Any]:
 def logs() -> str:
     with open(logger.log_path, mode='r') as f:
         data = list(filter(lambda i: len(i), f.read().split('\n')))
-
+    data.reverse()
     return render_template('app_logs.html', logs=data)
 
 

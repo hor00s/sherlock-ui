@@ -54,6 +54,10 @@
   <br>
 {% endfor %}
 
+<button id="clear-commands">Clear commands history</button>
+
+
+<button id="clear-users">Clear users history</button>
 <div class="users">
   {% for h in history %}
   <a href="/user/{{ h.0 }}">{{ h.0 }}</a>
