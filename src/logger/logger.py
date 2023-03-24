@@ -7,10 +7,12 @@ from __future__ import annotations
 import os
 import sys
 from enum import Enum
+from pathlib import Path
 from inspect import currentframe
 from typing import (
     Optional,
     Tuple,
+    Union,
     Dict,
     List,
     Any,
@@ -210,7 +212,7 @@ class Logger(metaclass=MetaLogger):
     user can change independently through `self.settings.update()`.
     Mind that level 1 will print evetything and level 5 less
     """
-    def __init__(self, level: int = 2, log_path: Optional[str] = None):
+    def __init__(self, level: int = 2, log_path: Optional[Union[str, Path]] = None):
         """Initializer of Logger object
 
         :param level: The level of debugging. Based on that, some informations\
@@ -234,9 +236,9 @@ class Logger(metaclass=MetaLogger):
         :rtype: Config
         """
         return self._settings
-    
+
     @property
-    def log_path(self):
+    def log_path(self) -> Optional[Union[str, Path]]:
         return self._log_path
 
     def _log(self, header: str, msg: str) -> None:
@@ -246,7 +248,7 @@ class Logger(metaclass=MetaLogger):
         :type header: str
         :param msg: The message to be logged
         :type msg: str
-        """        
+        """
         if self._log_path is not None:
             if not os.path.exists(self._log_path):
                 with open(self._log_path, mode='w') as _: ...
@@ -272,7 +274,7 @@ class Logger(metaclass=MetaLogger):
         :type prompt: str
         :return: *file path*, *line number* *prompt*
         :rtype: str
-        """        
+        """
         cf = currentframe()
         msg = f"File \"{file}\", line {cf.f_back.f_lineno}"  # type: ignore
         self.debug(f"{msg} : {prompt}")

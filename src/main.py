@@ -2,25 +2,17 @@ import os
 import sys
 import json
 import utils
-import shutil
 import datetime
 import traceback
-import requests as req
-import threading as thr
-import subprocess as sb
 import multiprocessing as mp
 from pathlib import Path
 from logger import Logger, get_color
-from typing import TypedDict
-from bs4 import BeautifulSoup
-from requests.exceptions import TooManyRedirects
-from flask_lt import run_with_lt
+from flask_lt import run_with_lt  # type: ignore
 from filedirutil import (
     FileHandler,
     DirHanlder,
 )
 from typing import (
-    List,
     Dict,
     Any,
 )
@@ -39,138 +31,22 @@ logger = Logger(1, utils.APP_LOGS)
 command_handler = FileHandler(utils.COMMAND_LOG, '\n')
 result_hander = DirHanlder(utils.RESULT_DIR)
 
-class SherlockCommand(TypedDict):
-    username: str
-    verbose: bool
-    nsfw: bool
-    local: bool
-    xlsx: bool
-    csv: bool
-    timeout: str
 
-
-def log_error(error: Exception):
-        date_time = datetime.datetime.now()
-        error_format = f"""{date_time}
+def log_error(error: Exception) -> None:
+    date_time = datetime.datetime.now()
+    error_format = f"""{date_time}
 Short error: {error}
 Detailed: {traceback.format_exc()}"""
-        logger.error(error_format)
-
-
-def clear_sherlock_output() -> str:
-    if sys.platform in ('linux', 'linux2', 'darwin'):
-        return "> /dev/null"
-    elif sys.platform in ('win32',):
-        return "> nul"
-
-
-def check_for_extra_files(username: str):
-    extensions = ('.xlsx', '.csv')
-    # Move .csv files in base dir
-    csv_in_results = filter(lambda i: i.endswith('.csv'), os.listdir(utils.RESULT_DIR))
-    full_paths = map(lambda i: str(Path(f"{utils.RESULT_DIR}/{i}")), csv_in_results)
-
-    for path in full_paths:
-        filename = DirHanlder.get_filename_with_ext_from_path(path)
-        shutil.move(path, Path(f"{utils.BASE_DIR}/{filename}"))
-
-    files = map(lambda ext: str(Path(f"{utils.BASE_DIR}/{username}{ext}")), extensions)
-    existing = filter(lambda i: os.path.exists(i), files)
-
-    return existing
-
-
-def get_sherlock_version():
-    return sb.check_output(['python3', f'{utils.SHERLOCK}', '--version']).decode('utf-8').split('\n')[:-1]
+    logger.error(error_format)
 
 
 def run_sherlock(command: str, username: str) -> None:
     logger.info(f"Initiating sherlock for `{username}`\n")
     os.system(command)
     logger.custom(result_hander.get_total_found_on(username), username, color=get_color('cyan'))
-    check_for_extra_files(username)
+    utils.check_for_extra_files(username)
     # TODO: Send signal to /api when operation finishes
     ...
-
-
-def construct_command(options: SherlockCommand) -> str:
-    # assert len(list(SherlockCommand.keys())) == len(options), "SherlockCommand has unnasigned option"
-    options_copy = options.copy()
-
-    command = []
-    command.append('python3')
-    command.append(utils.SHERLOCK)
-
-    command.append('--timeout')
-    timeout_time = options_copy.pop('timeout')
-    get_stdout = options_copy.pop('get_stdout')
-    
-    if not timeout_time:
-        command.append(utils.DEFAULT_TIMEOUT)
-    elif not timeout_time.isnumeric():
-        command.append(utils.DEFAULT_TIMEOUT)
-    else:
-        command.append(timeout_time)
-    
-    username = options_copy.pop('username').strip()
-
-    for k, v in options_copy.items():
-        if v:
-            command.append(k)
-    
-    command.append('--folderoutput')
-    command.append(utils.RESULT_DIR)
-    command.append(username)
-
-    if not get_stdout:
-        command.append(clear_sherlock_output())
-
-    return ' '.join(map(str, command))
-
-
-def remove_ext(filename: str) -> str:
-    r_name = ''.join(reversed(filename))
-    r_name = r_name[r_name.index('.')+1:]
-    return ''.join(reversed(r_name))
-
-
-def parse_html(html: str) -> str:
-    soup = BeautifulSoup(html, 'html.parser')
-    return soup.text
-
-
-def scrape_url(url: str) -> str:
-    html = "<h1>Unresolved</h1>"
-    try:
-        html = req.get(url).text
-    except TooManyRedirects:
-        html = "<h1>Unresolved</h1>"
-    finally:
-        return html
-
-
-def _check_statuses(url: str, storage: List[Any]) -> None:
-    html = scrape_url(url)
-    result = parse_html(html)
-    short_description = result[utils.DESCRIPTION_THRESHOLD]
-    storage.append([url.strip(), f"{short_description}..."])
-
-
-def check_statuses(urls: List[str]) -> List[str]:
-    data_with_status = []
-    threads = []
-    for url in urls:
-        t = thr.Thread(target=_check_statuses, args=(url, data_with_status))
-        t.daemon = True
-        threads.append(t)
-
-    for thread in threads:
-        thread.start()
-
-    for thread in threads:
-        thread.join()
-        
-    return data_with_status
 
 
 @app.route('/api', methods=['POST', 'GET', 'DELETE', 'PUT'])
@@ -181,7 +57,7 @@ def api() -> Dict[str, Any]:
 
     if request.method == 'POST':
         if header == 'run':
-            command = construct_command(body)
+            command = utils.construct_command(body, sys.platform)
 
             response = {'error': '', 'command': command}
             username = body['username'].strip()
@@ -207,12 +83,12 @@ def api() -> Dict[str, Any]:
             logger.success(f"User `{username}` has been removed\n")
             response = {'file': file, 'status': 'removed'}
             # Delete the extra files related to deleted user
-            for file in check_for_extra_files(username):
+            for file in utils.check_for_extra_files(username):
                 os.remove(file)
             return response
         elif header == 'command':
             command = body['content']
-            deleted = command_handler.delete(command)
+            deleted = command_handler.delete_line(command)
             logger.success(f"Command `{deleted}` has been removed\n")
             response = {'user': '<username>', 'status': 'removed'}
             return response
@@ -223,17 +99,17 @@ def api() -> Dict[str, Any]:
         elif header == 'site':
             site, user = body['site'], body['user']
             handler = FileHandler(Path(f"{utils.RESULT_DIR}/{user}.txt"))
-            handler.delete_line(site)
+            handler.delete_by_text(site)
             return {'site': site, 'status': 'deleted'}
     elif request.method == 'PUT':
         if header == 'site':
             user, site = body['user'], body['site'] + '\n'
             handler = FileHandler(Path(f"{utils.RESULT_DIR}/{user}.txt"))
             if site not in handler.read():
-                total = handler.delete(-1)
+                total = handler.delete_line(-1)
                 handler.append(site)
                 handler.append(total)
-            e = list(check_for_extra_files(user))
+            e = list(utils.check_for_extra_files(user))
             print(e)
             # TODO: Save the extra site in the `extra_files` (.csv, .xlsx)
 
@@ -241,15 +117,15 @@ def api() -> Dict[str, Any]:
 
 
 @app.route('/logs')
-def logs():
+def logs() -> str:
     with open(logger.log_path, mode='r') as f:
         data = list(filter(lambda i: len(i), f.read().split('\n')))
-    
+
     return render_template('app_logs.html', logs=data)
 
 
 @app.route('/download/<filename>')
-def download(filename):
+def download(filename: str) -> Any:
     path = str(Path(f"{utils.BASE_DIR}/{filename}"))
     return send_file(path, as_attachment=True)
 
@@ -261,10 +137,10 @@ def get_user(username: str) -> str:
         data = f.readlines()
 
     sites = data[:-1]
-    data_with_status = check_statuses(sites)
+    data_with_status = utils.check_statuses(sites)
     total = data[-1]
-    downloadables = map(lambda i: DirHanlder.get_filename_with_ext_from_path(i), check_for_extra_files(username))
-    
+    downloadables = map(lambda i: DirHanlder.get_filename_with_ext_from_path(i), utils.check_for_extra_files(username))
+
     return render_template('userinfo.html', userdata=data_with_status, total=total, files=downloadables, user=username)
 
 
@@ -274,14 +150,14 @@ def index() -> str:
     command_handler.init()
     result_history = result_hander.all()
     command_history = command_handler.all()
-    version_info = get_sherlock_version()
+    version_info = utils.get_sherlock_version()
 
     result_history.reverse()
     # command_history.reverse()
     return render_template('index.html', history=result_history, commands=command_history, version_info=version_info)
 
 
-def main():
+def main() -> None:
     if len(sys.argv) > 1 and sys.argv[1] == 'lt':
         run_with_lt(app)
     app.run(debug=True, port=6969)

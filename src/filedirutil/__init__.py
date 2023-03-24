@@ -1,2 +1,2 @@
-from .filehandler import *
-from .dirhandler import *
+from .filehandler import * # noqa
+from .dirhandler import * # noqa
