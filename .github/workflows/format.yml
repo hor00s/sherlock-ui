@@ -21,4 +21,4 @@ jobs:
         run: pip install flake8
 
       - name: Run Flake8
-        run: flake8 --max-line-length=120 --ignore=E701 src/
+        run: flake8 --max-line-length=120 --ignore=E701 src/ && flake8 --max-line-length=120 --ignore=E701 update.py

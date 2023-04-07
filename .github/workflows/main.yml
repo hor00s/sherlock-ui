@@ -36,4 +36,4 @@ jobs:
         with:
           python-version: 3.9
       - name: Check Code Format
-        uses: ./.github/workflows/format.yml
+        uses: ../.github/workflows/format.yml
