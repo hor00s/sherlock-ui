@@ -8,7 +8,6 @@ from bs4 import BeautifulSoup
 from pathlib import Path
 
 
-
 BASE = Path(__file__).parent
 UPDATE_LOG = Path(f"{BASE}/update_log.txt")
 SHERLOCK = Path(f"{BASE}/sherlock")
@@ -35,6 +34,7 @@ ui_zip_download = 'https://github.com/hor00s/sherlock-ui/archive/refs/heads/mast
 
 abort = get_color('red_bold')
 
+
 def parser(text):
     return map(  # type: ignore
         lambda i: i[:-1] if i.endswith('.') or i.endswith(',') else i,
@@ -46,13 +46,14 @@ def parser(text):
 def get_local_version(file: str) -> tuple[int]:
     with open(file, mode='r') as f:
         data = f.read()
-    
+
     parsed = tuple(parser(data))
-    
+
     for index, word in enumerate(parsed):
         if word == '__version__':
-            version_num = parsed[index+2][1:-1]
+            version_num = parsed[index + 2][1:-1]
             return tuple(map(int, version_num.split('.')))
+
 
 def get_cloud_version(cloud_file: str) -> tuple[int]:
     # Parse whole html
@@ -62,7 +63,7 @@ def get_cloud_version(cloud_file: str) -> tuple[int]:
     parsed_html = tuple(parser(soup.text))
     for index, word in enumerate(parsed_html):
         if word == '__version__':
-            version_clean = parsed_html[index+2][1:-1] # remove quotes ("")
+            version_clean = parsed_html[index + 2][1:-1]  # remove quotes ("")
             version = tuple(map(int, version_clean.split('.')))
             return version
     return soup.text
@@ -109,7 +110,8 @@ def update(project, local_version_file, cloud_version_file, project_download_uri
     local_version = get_local_version(local_version_file)
     cloud_version = get_cloud_version(cloud_version_file)
 
-    logger.custom(f"Cloud version `{'.'.join(map(str, cloud_version))}` | Local version `{'.'.join(map(str, local_version))}`", 'versions', color=get_color('cyan'))
+    logger.custom(f"Cloud version `{'.'.join(map(str, cloud_version))}` | Local version\
+ `{'.'.join(map(str, local_version))}`", 'versions', color=get_color('cyan'))
     if cloud_version > local_version:
         logger.info("Update is available")
         zip_file = get_zip_file(project_download_uri, land_dir)
@@ -143,4 +145,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
