@@ -112,13 +112,3 @@ class TestLogger(unittest.TestCase):
         with open(file, mode='r') as f:
             self.assertEqual(f"[INFO]: {msg}", f.read()[:-1])  # Slice to remove '\n' from the file
         os.remove(file)
-
-    def test_run_all(self) -> None:
-        logger = Path(f"{BASE_DIR}/logger.py")
-        tests = Path(f"{BASE_DIR}/tests.py")
-        os.system(f'bandit -r {logger}')  # nosec
-        os.system(f'bandit -r {tests}')  # nosec
-        os.system(f'mypy {logger} --strict')  # nosec
-        os.system(f'mypy {tests} --strict')  # nosec
-
-# TODO: Test the effect of the metaclass
