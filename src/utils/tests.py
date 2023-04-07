@@ -28,6 +28,8 @@ class TestShrunner(unittest.TestCase):
         self.assertEqual(clear_sherlock_output('linux'), '> /dev/null')
 
     def test_check_for_extra_files(self) -> None:
+        if not os.path.exists(RESULT_DIR):
+            os.mkdir(RESULT_DIR)
         username = 'test'
         path = Path(f"{BASE_DIR}/{username}.csv")
         with open(path, mode='w') as _: ...
