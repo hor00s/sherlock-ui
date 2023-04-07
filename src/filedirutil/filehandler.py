@@ -66,6 +66,7 @@ class FileHandler:
         :return: The text of the deleted line
         :rtype: str
         """
+        print(line_num)
         data = self.read()
         new_file_content = ""
 

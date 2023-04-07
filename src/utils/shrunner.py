@@ -18,7 +18,9 @@ from utils.constants import (
 )
 from typing import (
     TypedDict,
+    Iterable,
     Union,
+    Dict,
     List,
     Any,
 )
@@ -62,7 +64,7 @@ def clear_sherlock_output(platform: str) -> str:
     raise ValueError(f"Usupported platform `{platform}`")
 
 
-def check_for_extra_files(username: str) -> filter:
+def check_for_extra_files(username: Union[str, Path]) -> Iterable[str]:
     extensions = ('.xlsx', '.csv')
     # Move .csv files in base dir
     csv_in_results = filter(lambda i: i.endswith('.csv'), os.listdir(RESULT_DIR))
@@ -82,7 +84,7 @@ def get_sherlock_version() -> List[str]:
     return sb.check_output(['python3', f'{SHERLOCK}', '--version']).decode('utf-8').split('\n')[:-1]
 
 
-def construct_command(options: SherlockCommand, platform: str) -> str:
+def construct_command(options: Dict[str, Any], platform: str) -> str:
     # assert len(list(SherlockCommand.keys())) == len(options), "SherlockCommand has unnasigned option"
     options_copy = SherlockCommand(
         username=options['username'],
@@ -100,8 +102,8 @@ def construct_command(options: SherlockCommand, platform: str) -> str:
     command.append(SHERLOCK)
 
     command.append('--timeout')
-    timeout_time = options_copy.pop('timeout')
-    get_stdout = options_copy.pop('get_stdout')
+    timeout_time = options_copy.pop('timeout')  # type: ignore
+    get_stdout = options_copy.pop('get_stdout')  # type: ignore
 
     if not timeout_time:
         command.append(DEFAULT_TIMEOUT)
@@ -110,7 +112,7 @@ def construct_command(options: SherlockCommand, platform: str) -> str:
     else:
         command.append(timeout_time)
 
-    username = options_copy.pop('username').strip()
+    username = options_copy.pop('username').strip()  # type: ignore
 
     for k, v in options_copy.items():
         if v:

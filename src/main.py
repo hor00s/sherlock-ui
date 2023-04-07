@@ -100,8 +100,8 @@ def api() -> Dict[str, Any]:
             logger.success("User history has been cleared")
             response = {'all_users': 'cleared'}
         elif header == 'command':
-            command = body['content']
-            deleted = command_handler.delete_line(command)
+            command_index = body['content']
+            deleted = command_handler.delete_line(command_index)
             logger.success(f"Command `{deleted}` has been removed\n")
             response = {'user': '<username>', 'status': 'removed'}
             return response
@@ -110,7 +110,7 @@ def api() -> Dict[str, Any]:
             logger.success("All commands have been cleared")
             response = {'all_commands': 'cleared'}
         elif header == 'logs':
-            with open(logger.log_path, mode='w') as f:
+            with open(logger.log_path, mode='w') as f:  # type: ignore
                 f.write('')
             return {'logs': 'cleared'}
         elif header == 'site':
@@ -135,7 +135,7 @@ def api() -> Dict[str, Any]:
 
 @app.route('/logs')
 def logs() -> str:
-    with open(logger.log_path, mode='r') as f:
+    with open(logger.log_path, mode='r') as f:  # type: ignore
         data = list(filter(lambda i: len(i), f.read().split('\n')))
     data.reverse()
     return render_template('app_logs.html', logs=data)
